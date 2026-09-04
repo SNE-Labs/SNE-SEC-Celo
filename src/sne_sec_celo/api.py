@@ -21,10 +21,16 @@ from .errors import (
     TargetRejected,
 )
 from .payment_store import SQLitePaymentStore
-from .provider import ReferenceAssessmentProvider
+from .projections import review_diff_preview, review_preview
+from .provider import AssessmentProvider, ReferenceAssessmentProvider
 from .service import ReviewService
 from .store import SQLiteReviewStore
-from .x402_runtime import X402Runtime, X402Settings, build_x402_runtime
+from .x402_runtime import (
+    X402Runtime,
+    X402Settings,
+    build_commercial_policy,
+    build_x402_runtime,
+)
 
 
 class CreateReviewRequest(BaseModel):
@@ -48,15 +54,29 @@ def create_app(
     agent_settings: AgentSettings | None = None,
     x402_settings: X402Settings | None = None,
     x402_runtime: X402Runtime | None = None,
+    assessment_provider: AssessmentProvider | None = None,
+    public_example_review_id: str | None = None,
 ) -> FastAPI:
     path = database_path or Path(
         os.environ.get("SNE_SEC_CELO_DATABASE", ".sne-sec-celo/reviews.sqlite3")
     )
     store = SQLiteReviewStore(path)
     store.initialize()
-    service = ReviewService(ReferenceAssessmentProvider(), store)
+    service = ReviewService(assessment_provider or ReferenceAssessmentProvider(), store)
     settings = agent_settings or AgentSettings.from_environment()
     payment_settings = x402_settings or X402Settings.from_environment(settings)
+    example_review_id = public_example_review_id
+    if example_review_id is None:
+        example_review_id = os.environ.get("SNE_SEC_CELO_PUBLIC_EXAMPLE_REVIEW_ID")
+    if example_review_id is not None:
+        example_review_id = example_review_id.strip()
+        if (
+            not example_review_id
+            or len(example_review_id) > 128
+            or "/" in example_review_id
+            or "\\" in example_review_id
+        ):
+            raise InvariantViolation("public example Review ID is malformed")
     if payment_settings.enabled != settings.x402_enabled:
         raise InvariantViolation("agent and x402 enabled states must agree")
     app = FastAPI(
@@ -87,6 +107,10 @@ def create_app(
     def capabilities() -> dict[str, object]:
         return build_capabilities(settings)
 
+    @app.get("/.well-known/sne-sec-commerce.json")
+    def commercial_policy() -> dict[str, object]:
+        return build_commercial_policy(payment_settings, example_review_id)
+
     @app.get("/assets/sne-sec-celo-agent.svg", include_in_schema=False)
     def agent_image() -> Response:
         return Response(content=AGENT_SVG, media_type="image/svg+xml")
@@ -107,7 +131,7 @@ def create_app(
     @app.post("/v1/reference/reviews", status_code=201)
     async def create_review(request: CreateReviewRequest) -> object:
         try:
-            return _payload(await service.create_review(request.target))
+            return _payload(review_preview(await service.create_review(request.target)))
         except TargetRejected as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except CollectionFailed as exc:
@@ -118,7 +142,16 @@ def create_app(
     @app.get("/v1/reviews/{review_id}")
     def get_review(review_id: str) -> object:
         try:
-            return _payload(service.get_review(review_id))
+            return _payload(review_preview(service.get_review(review_id)))
+        except ReviewNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/v1/reference/example-review")
+    def get_public_example_review() -> object:
+        if example_review_id is None:
+            raise HTTPException(status_code=404, detail="public example Review is not configured")
+        try:
+            return _payload(service.get_review(example_review_id))
         except ReviewNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -131,11 +164,24 @@ def create_app(
             except ReviewNotFound as exc:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+        @app.get(
+            "/v1/x402/review-diffs/{previous_review_id}/{current_review_id}"
+        )
+        def compare_paid_reviews(
+            previous_review_id: str, current_review_id: str
+        ) -> object:
+            try:
+                return _payload(service.compare(previous_review_id, current_review_id))
+            except ReviewNotFound as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.post("/v1/review-diffs")
     def compare_reviews(request: ReviewDiffRequest) -> object:
         try:
             return _payload(
-                service.compare(request.previous_review_id, request.current_review_id)
+                review_diff_preview(
+                    service.compare(request.previous_review_id, request.current_review_id)
+                )
             )
         except ReviewNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

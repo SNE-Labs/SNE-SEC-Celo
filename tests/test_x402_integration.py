@@ -110,10 +110,13 @@ class X402IntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_402_then_delivery_only_after_independent_celo_admission(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "reviews.sqlite3"
-            review = await provider(exchange()).assess("example.org")
+            assessment = provider(exchange(), exchange())
+            review = await assessment.assess("example.org")
+            other_review = await assessment.assess("example.org")
             review_store = SQLiteReviewStore(database)
             review_store.initialize()
             review_store.add(review)
+            review_store.add(other_review)
 
             payment_store = SQLitePaymentStore(database)
             payment_store.initialize()
@@ -152,11 +155,97 @@ class X402IntegrationTests(unittest.IsolatedAsyncioTestCase):
                     },
                 )
 
+                facilitator.verify_valid = False
+                replayed_for_other_review = await client.get(
+                    f"/v1/x402/reviews/{other_review.review_id}",
+                    headers={
+                        "PAYMENT-SIGNATURE": encode_payment_signature_header(
+                            payment_payload(requirement)
+                        )
+                    },
+                )
+
             self.assertEqual(paid.status_code, 200)
             self.assertEqual(paid.json()["result_digest"], review.result_digest)
             self.assertIn(PAYMENT_RESPONSE_HEADER, paid.headers)
             self.assertEqual(facilitator.settle_calls, 1)
             self.assertIsNotNone(payment_store.settlement_for_transaction(TX_HASH))
+            self.assertEqual(replayed_for_other_review.status_code, 402)
+
+    async def test_full_diff_is_paid_and_bound_to_the_exact_review_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "reviews.sqlite3"
+            assessment = provider(
+                exchange(),
+                exchange(
+                    headers=(
+                        ("strict-transport-security", "present"),
+                        ("content-security-policy", "present"),
+                        ("x-content-type-options", "present"),
+                        ("referrer-policy", "present"),
+                        ("permissions-policy", "present"),
+                    )
+                ),
+            )
+            previous = await assessment.assess("example.org")
+            current = await assessment.assess("example.org")
+            review_store = SQLiteReviewStore(database)
+            review_store.initialize()
+            review_store.add(previous)
+            review_store.add(current)
+
+            payment_store = SQLitePaymentStore(database)
+            payment_store.initialize()
+            facilitator = FakeFacilitator(payment_store)
+            settings = X402Settings(enabled=True, pay_to=PAYEE, amount_atomic=10_000)
+            runtime = build_x402_runtime(
+                settings=settings,
+                store=payment_store,
+                facilitator=facilitator,
+                rpc=FakeRPC(),
+                clock=SequenceClock(),
+            )
+            app = create_app(
+                database_path=database,
+                agent_settings=AgentSettings(
+                    public_base_url="https://agent.example.org",
+                    wallet_address=PAYEE,
+                    x402_enabled=True,
+                ),
+                x402_settings=settings,
+                x402_runtime=runtime,
+            )
+            resource = (
+                f"/v1/x402/review-diffs/{previous.review_id}/{current.review_id}"
+            )
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                unpaid = await client.get(resource)
+                self.assertEqual(unpaid.status_code, 402)
+                requirement = decode_payment_required_header(
+                    unpaid.headers[PAYMENT_REQUIRED_HEADER]
+                ).accepts[0]
+                paid = await client.get(
+                    resource,
+                    headers={
+                        "PAYMENT-SIGNATURE": encode_payment_signature_header(
+                            payment_payload(requirement)
+                        )
+                    },
+                )
+
+            self.assertEqual(paid.status_code, 200)
+            self.assertIn("entries", paid.json())
+            self.assertIn("diff_digest", paid.json())
+            authorization_id = authorization_identity(
+                network=CELO_MAINNET_CAIP2,
+                asset=requirement.asset,
+                payer=PAYER,
+                nonce=NONCE,
+            )
+            intent = payment_store.get_intent_by_authorization(authorization_id)
+            self.assertEqual(intent.resource, resource)
+            self.assertEqual(facilitator.settle_calls, 1)
 
     async def test_ambiguous_effect_fails_closed_then_recovers_without_resettling(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

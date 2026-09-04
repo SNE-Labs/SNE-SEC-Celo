@@ -56,22 +56,31 @@ The reference surface exposes:
 ```text
 GET  /healthz
 POST /v1/reference/reviews
-GET  /v1/reviews/{review_id}
+GET  /v1/reviews/{review_id}              (limited public preview)
+GET  /v1/reference/example-review         (one fixed complete public example)
 GET  /v1/x402/reviews/{review_id}  (only when x402 is fully configured)
-POST /v1/review-diffs
+POST /v1/review-diffs                     (aggregate public preview)
+GET  /v1/x402/review-diffs/{previous_review_id}/{current_review_id}
 GET  /.well-known/agent.json
 GET  /.well-known/sne-sec-capabilities.json
+GET  /.well-known/sne-sec-commerce.json
 ```
 
 Every persisted Review is append-only at the database boundary. Rescanning creates another Review
 and `ReviewDiff` classifies resolution, regression, unchanged results, and coverage changes.
+Creation and public lookup expose only `review_id`, completion status, score, and aggregate summary.
+Observations, Evidence, RuleEvaluations, Finding narratives, remediation, and complete ReviewDiff
+entries are premium material. The only full public Review is the fixed, operator-selected example;
+callers cannot select or replace it.
 
 ## x402 review delivery on Celo
 
 The optional paid delivery route uses x402 v2 `exact` with Celo mainnet USDC. Its offer is explicit:
 `eip155:42220`, asset `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`, six decimals,
 and an integer atomic amount. The public Security Passport launch price is `1000000` atomic units,
-or `1 USDC`. Dollar shorthand and implicit assets are not admitted.
+or `1 USDC`, for each full Review or full ReviewDiff delivery. The machine-readable commercial
+policy is published at `/.well-known/sne-sec-commerce.json`. Dollar shorthand and implicit assets
+are not admitted.
 
 The facilitator does not decide settlement truth. Before `/settle`, the service durably records a
 payment intent without retaining the signature or raw authorization. After a successful

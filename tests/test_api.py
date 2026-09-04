@@ -10,7 +10,9 @@ from httpx import ASGITransport, AsyncClient
 from sne_sec_celo.agent import CELO_IDENTITY_REGISTRY, AgentSettings
 from sne_sec_celo.api import create_app
 from sne_sec_celo.errors import InvariantViolation
+from sne_sec_celo.store import SQLiteReviewStore
 from sne_sec_celo.x402_runtime import X402Settings
+from tests.helpers import exchange, provider
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
@@ -65,6 +67,82 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                     "/v1/reference/reviews", json={"target": "localhost"}
                 )
             self.assertEqual(response.status_code, 422)
+
+    async def test_public_projection_and_single_fixed_full_example(self) -> None:
+        assessment = provider(
+            exchange(),
+            exchange(
+                headers=(
+                    ("strict-transport-security", "present"),
+                    ("content-security-policy", "present"),
+                    ("x-content-type-options", "present"),
+                    ("referrer-policy", "present"),
+                    ("permissions-policy", "present"),
+                )
+            ),
+        )
+        example = await assessment.assess("example.org")
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "reviews.sqlite3"
+            store = SQLiteReviewStore(database)
+            store.initialize()
+            store.add(example)
+            app = create_app(
+                database_path=database,
+                assessment_provider=assessment,
+                public_example_review_id=example.review_id,
+            )
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                created = await client.post(
+                    "/v1/reference/reviews", json={"target": "example.org"}
+                )
+                review_id = created.json()["review_id"]
+                preview = await client.get(f"/v1/reviews/{review_id}")
+                public_example = await client.get("/v1/reference/example-review")
+                comparison = await client.post(
+                    "/v1/review-diffs",
+                    json={
+                        "previous_review_id": example.review_id,
+                        "current_review_id": review_id,
+                    },
+                )
+                commerce = await client.get("/.well-known/sne-sec-commerce.json")
+
+        preview_keys = {"review_id", "status", "score", "summary"}
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(set(created.json()), preview_keys)
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(set(preview.json()), preview_keys)
+        self.assertEqual(preview.json(), created.json())
+        self.assertNotIn("findings", preview.text)
+        self.assertNotIn("evidence", preview.text)
+        self.assertNotIn("remediation", preview.text)
+
+        self.assertEqual(public_example.status_code, 200)
+        self.assertEqual(public_example.json()["review_id"], example.review_id)
+        self.assertIn("evidence", public_example.json())
+        self.assertIn("findings", public_example.json())
+
+        self.assertEqual(comparison.status_code, 200)
+        self.assertEqual(
+            set(comparison.json()),
+            {"previous_review_id", "current_review_id", "status", "summary"},
+        )
+        self.assertNotIn("entries", comparison.text)
+        self.assertNotIn("rule_id", comparison.text)
+        self.assertNotIn("diff_digest", comparison.text)
+
+        policy = commerce.json()
+        self.assertEqual(
+            policy["public"]["fixed_example_review"]["review_id"],
+            example.review_id,
+        )
+        self.assertEqual(policy["x402"]["full_review"]["amount_atomic"], "1000000")
+        self.assertEqual(
+            policy["x402"]["full_review_diff"]["amount_atomic"], "1000000"
+        )
+        self.assertFalse(policy["x402"]["full_review"]["available"])
 
     async def test_erc8004_registration_file_is_spec_shaped_and_bound(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

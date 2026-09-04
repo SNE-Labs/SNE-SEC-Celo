@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -51,7 +52,10 @@ from .payments import (
     reconcile_settlement,
 )
 
-X402_PROTECTED_ROUTE = "GET /v1/x402/reviews/*"
+X402_REVIEW_ROUTE = "GET /v1/x402/reviews/:review_id"
+X402_REVIEW_DIFF_ROUTE = (
+    "GET /v1/x402/review-diffs/:previous_review_id/:current_review_id"
+)
 CELO_FACILITATOR_URL = "https://api.x402.celo.org"
 CELO_RPC_URL = "https://forno.celo.org"
 
@@ -179,7 +183,67 @@ def _resource(context: PaymentHookContext) -> str:
     method = getattr(request, "method", None)
     if method != "GET" or not isinstance(path, str):
         raise InvariantViolation("x402 settlement is not bound to the protected GET resource")
+    if not (
+        re.fullmatch(r"/v1/x402/reviews/[^/]+", path)
+        or re.fullmatch(r"/v1/x402/review-diffs/[^/]+/[^/]+", path)
+    ):
+        raise InvariantViolation("x402 settlement references an unadmitted resource")
     return path
+
+
+def build_commercial_policy(
+    settings: X402Settings, public_example_review_id: str | None
+) -> dict[str, object]:
+    """Publish the complete V1 free/paid boundary from the x402 source of truth."""
+    offer = {
+        "network": CELO_MAINNET_CAIP2,
+        "asset": CELO_MAINNET_USDC,
+        "asset_symbol": "USDC",
+        "asset_decimals": 6,
+        "amount_atomic": str(settings.amount_atomic),
+        "available": settings.enabled,
+    }
+    return {
+        "schema_version": "sne-sec-celo-commerce-v1",
+        "public": {
+            "create_review": {
+                "method": "POST",
+                "route": "/v1/reference/reviews",
+                "projection": "review_id,status,score,summary",
+            },
+            "review_preview": {
+                "method": "GET",
+                "route_template": "/v1/reviews/{review_id}",
+                "projection": "review_id,status,score,summary",
+            },
+            "review_diff_preview": {
+                "method": "POST",
+                "route": "/v1/review-diffs",
+                "projection": "aggregate_outcomes_only",
+            },
+            "fixed_example_review": {
+                "method": "GET",
+                "route": "/v1/reference/example-review",
+                "review_id": public_example_review_id,
+                "available": public_example_review_id is not None,
+            },
+        },
+        "x402": {
+            "full_review": {
+                **offer,
+                "method": "GET",
+                "route_template": "/v1/x402/reviews/{review_id}",
+            },
+            "full_review_diff": {
+                **offer,
+                "method": "GET",
+                "route_template": (
+                    "/v1/x402/review-diffs/{previous_review_id}/{current_review_id}"
+                ),
+            },
+        },
+        "billing_policy": "one settled x402 authorization per full resource delivery",
+    }
 
 
 def _intent_from_context(context: PaymentHookContext, created_at: datetime) -> PaymentIntent:
@@ -226,6 +290,34 @@ def _authorization_id_from_context(context: PaymentHookContext) -> str:
         asset=requirements.asset,
         payer=payer,
         nonce=nonce,
+    )
+
+
+def _context_matches_intent(context: PaymentHookContext, intent: PaymentIntent) -> bool:
+    """Require a recovered authorization to describe the original paid resource exactly."""
+    requirements = cast(PaymentRequirements, context.requirements)
+    authorization = _authorization(context)
+    payer = authorization.get("from")
+    payee = authorization.get("to")
+    nonce = authorization.get("nonce")
+    if not all(isinstance(value, str) for value in (payer, payee, nonce)):
+        return False
+    return (
+        _resource(context) == intent.resource
+        and requirements.scheme == "exact"
+        and str(requirements.network) == intent.network
+        and normalize_address(requirements.asset) == intent.asset
+        and _integer(requirements.amount, field="required amount") == intent.amount_atomic
+        and normalize_address(requirements.pay_to) == intent.payee
+        and normalize_address(str(payer)) == intent.payer
+        and normalize_address(str(payee)) == intent.payee
+        and _integer(authorization.get("value"), field="authorization value")
+        == intent.amount_atomic
+        and _integer(authorization.get("validAfter"), field="validAfter")
+        == intent.valid_after
+        and _integer(authorization.get("validBefore"), field="validBefore")
+        == intent.valid_before
+        and _authorization_id_from_context(context) == intent.authorization_id
     )
 
 
@@ -326,6 +418,8 @@ def build_x402_runtime(
         try:
             authorization_id = _authorization_id_from_context(context)
             intent = store.get_intent_by_authorization(authorization_id)
+            if not _context_matches_intent(context, intent):
+                return None
             claim = store.claim_for_authorization(authorization_id)
             if claim is None:
                 return None
@@ -337,23 +431,31 @@ def build_x402_runtime(
     server.on_before_settle(before_settle)
     server.on_after_settle(after_settle)
     server.on_verify_failure(recover_claim)
+    payment_option = PaymentOption(
+        scheme="exact",
+        network=CELO_MAINNET_CAIP2,
+        pay_to=settings.pay_to,
+        price=AssetAmount(
+            amount=str(settings.amount_atomic),
+            asset=CELO_MAINNET_USDC,
+            extra={"name": "USDC", "version": "2"},
+        ),
+        max_timeout_seconds=300,
+    )
     routes: RoutesConfig = {
-        X402_PROTECTED_ROUTE: RouteConfig(
-            accepts=PaymentOption(
-                scheme="exact",
-                network=CELO_MAINNET_CAIP2,
-                pay_to=settings.pay_to,
-                price=AssetAmount(
-                    amount=str(settings.amount_atomic),
-                    asset=CELO_MAINNET_USDC,
-                    extra={"name": "USDC", "version": "2"},
-                ),
-                max_timeout_seconds=300,
-            ),
+        X402_REVIEW_ROUTE: RouteConfig(
+            accepts=payment_option,
             description="Deliver one immutable SNE-SEC evidence-backed Review",
             mime_type="application/json",
             service_name="SNE-SEC Review Delivery",
             tags=["security", "evidence", "celo", "x402"],
-        )
+        ),
+        X402_REVIEW_DIFF_ROUTE: RouteConfig(
+            accepts=payment_option,
+            description="Deliver one evidence-backed ReviewDiff for an exact Review pair",
+            mime_type="application/json",
+            service_name="SNE-SEC ReviewDiff Delivery",
+            tags=["security", "evidence", "diff", "celo", "x402"],
+        ),
     }
     return X402Runtime(routes=routes, server=server, store=store)
