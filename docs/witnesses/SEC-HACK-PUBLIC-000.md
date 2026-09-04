@@ -1,6 +1,6 @@
 # SEC-HACK-PUBLIC-000 witness
 
-Date: 2026-09-04  
+Date: 2026-09-04
 Status: gates 1–5 complete; gates 6–8 deliberately require separately controlled external effects
 
 ## Public boundary

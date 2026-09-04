@@ -7,4 +7,3 @@ evidence, or other credentials in an issue, discussion, test fixture, or public 
 The reference provider is authorized only for low-impact observation of public HTTP(S) origins.
 Reports requesting exploit payloads, credential attacks, brute force, port scanning, directory or
 subdomain enumeration, or authentication bypass are outside the product's authority.
-

@@ -31,4 +31,3 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -t sne-sec-celo:${{ github.sha }} .
-

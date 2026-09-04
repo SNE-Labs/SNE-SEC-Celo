@@ -66,10 +66,7 @@ and `ReviewDiff` classifies resolution, regression, unchanged results, and cover
 ## Verify
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
-python -m ruff check .
-python -m mypy src
+& .\scripts\verify.ps1
 python scripts\witness_reference_path.py https://celo.org
 docker build -t sne-sec-celo .
 ```
