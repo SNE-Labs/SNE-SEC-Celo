@@ -7,8 +7,10 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from .agent import AGENT_SVG, AgentSettings, build_capabilities, build_registration_file
 from .canonical import canonical_json
 from .errors import CollectionFailed, ReviewAlreadyExists, ReviewNotFound, TargetRejected
 from .provider import ReferenceAssessmentProvider
@@ -31,13 +33,16 @@ def _payload(value: object) -> object:
     return json.loads(canonical_json(value))
 
 
-def create_app(*, database_path: Path | None = None) -> FastAPI:
+def create_app(
+    *, database_path: Path | None = None, agent_settings: AgentSettings | None = None
+) -> FastAPI:
     path = database_path or Path(
         os.environ.get("SNE_SEC_CELO_DATABASE", ".sne-sec-celo/reviews.sqlite3")
     )
     store = SQLiteReviewStore(path)
     store.initialize()
     service = ReviewService(ReferenceAssessmentProvider(), store)
+    settings = agent_settings or AgentSettings.from_environment()
     app = FastAPI(
         title="SNE-SEC Celo Agent",
         version="1.0.0",
@@ -45,12 +50,28 @@ def create_app(*, database_path: Path | None = None) -> FastAPI:
     )
     app.state.review_service = service
 
+    @app.get("/.well-known/agent.json")
+    @app.get("/.well-known/agent-registration.json", include_in_schema=False)
+    @app.get("/agent-registration.json", include_in_schema=False)
+    def agent_registration() -> dict[str, object]:
+        return build_registration_file(settings)
+
+    @app.get("/.well-known/sne-sec-capabilities.json")
+    def capabilities() -> dict[str, object]:
+        return build_capabilities(settings)
+
+    @app.get("/assets/sne-sec-celo-agent.svg", include_in_schema=False)
+    def agent_image() -> Response:
+        return Response(content=AGENT_SVG, media_type="image/svg+xml")
+
     @app.get("/healthz")
     def health() -> dict[str, object]:
         return {
             "status": "ok",
             "provider": "sne-sec-celo-reference",
             "private_provider_required": False,
+            "erc8004_registered": settings.agent_id is not None,
+            "x402_enabled": settings.x402_enabled,
         }
 
     @app.post("/v1/reference/reviews", status_code=201)

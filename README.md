@@ -58,6 +58,8 @@ GET  /healthz
 POST /v1/reference/reviews
 GET  /v1/reviews/{review_id}
 POST /v1/review-diffs
+GET  /.well-known/agent.json
+GET  /.well-known/sne-sec-capabilities.json
 ```
 
 Every persisted Review is append-only at the database boundary. Rescanning creates another Review
