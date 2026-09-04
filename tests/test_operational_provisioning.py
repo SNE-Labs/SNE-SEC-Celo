@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from sne_sec_celo.errors import InvariantViolation
 from sne_sec_celo.operational_provisioning import (
+    DeterministicProvisioningRejection,
     OperationalSecretVault,
     provision_operational_identity,
     safe_summary,
@@ -17,8 +18,9 @@ IDENTITY = "0x1111111111111111111111111111111111111111"
 
 
 class FakeIssuer:
-    def __init__(self, *, fail: bool = False) -> None:
+    def __init__(self, *, fail: bool = False, reject: bool = False) -> None:
         self.fail = fail
+        self.reject = reject
         self.calls = 0
 
     def create_key(
@@ -27,6 +29,8 @@ class FakeIssuer:
         self.calls += 1
         assert callable(before_submit)
         before_submit()
+        if self.reject:
+            raise DeterministicProvisioningRejection("HTTP 401")
         if self.fail:
             raise TimeoutError("result was not observed")
         self.last_address = address
@@ -92,6 +96,23 @@ class OperationalProvisioningTests(unittest.TestCase):
                 provision_operational_identity(
                     pay_to=TREASURY, vault=vault, issuer=FakeIssuer()
                 )
+
+    def test_deterministic_rejection_can_be_retried_without_new_wallet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            vault = self.vault(temporary)
+            rejected = FakeIssuer(reject=True)
+            with patch(
+                "sne_sec_celo.operational_provisioning._new_wallet",
+                return_value=(IDENTITY, "private-material"),
+            ) as wallet:
+                with self.assertRaises(DeterministicProvisioningRejection):
+                    provision_operational_identity(
+                        pay_to=TREASURY, vault=vault, issuer=rejected
+                    )
+                provision_operational_identity(
+                    pay_to=TREASURY, vault=vault, issuer=FakeIssuer()
+                )
+            self.assertEqual(wallet.call_count, 1)
             with self.assertRaisesRegex(InvariantViolation, "another treasury"):
                 provision_operational_identity(
                     pay_to="0x2222222222222222222222222222222222222222",

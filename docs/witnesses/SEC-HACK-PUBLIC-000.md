@@ -143,3 +143,27 @@ Remote gate results for commit `b6e80eb` on 2026-09-04:
 - the pre-existing public Review remained retrievable with result digest
   `sha256:ab13ab447559a501f93509009e5486ba144208bacbd945d2d736c7d72b54c16e` after the IaC-triggered
   redeployment.
+
+## Hosted x402 identity provisioning
+
+The Askbot-style operational provisioning gate completed on 2026-09-04 without an on-chain
+transaction:
+
+- commit `47e4a1f` separated the dedicated signing identity from the payment destination and added
+  a Windows-user-bound DPAPI vault with save-before-effect facilitator enrollment;
+- GitHub Actions run `33907016254` passed 29 tests, Ruff, strict mypy, typed Railway IaC, Linux
+  image build, and the mounted-volume container witness;
+- the dedicated public identity is `0x54b66a5f82319983d376c3eb985e9fb044b6d72d`; its signing
+  material exists only in the operator's DPAPI vault and was never published to Railway;
+- x402 `payTo` is the pre-existing operator treasury
+  `0x34385fc3b012ae8980e17f6c3224a5ae0f946289`;
+- `x402.celo.org` observed the gasless identity signature, issued the facilitator credential once,
+  and reports the same public account with 20 mainnet and 1,000 testnet settlement credits;
+- Railway deployment `11291010-c17b-4e09-81a1-c05950951a83` passed `/healthz` with x402 enabled;
+- the protected Review endpoint returned HTTP 402 advertising x402 v2 `exact`, network
+  `eip155:42220`, Celo USDC, amount `10000` atomic units, and the exact treasury destination;
+- the public ERC-8004 registration document advertises the dedicated wallet and x402 support, but
+  its `registrations` list remains empty because no registry mint was performed.
+
+This gate proves a live payment offer and facilitator readiness. It does not claim a buyer payment
+or ERC-8004 mainnet registration.

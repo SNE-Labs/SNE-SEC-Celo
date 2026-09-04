@@ -155,7 +155,8 @@ infrastructure definition, a persistent `/data` volume for append-only reference
 `/healthz` as its deployment gate. The IaC binds the application, service domain, and Railway
 healthcheck to port 8000. A minimal root entrypoint admits ownership of the mounted volume and
 immediately replaces itself with the application running as the unprivileged `sne-sec` user.
-Wallet private material is never present in the service.
+Uvicorn admits Railway's forwarded scheme so x402 resource URLs retain public HTTPS. Wallet
+private material is never present in the service.
 
 ## Verify
 

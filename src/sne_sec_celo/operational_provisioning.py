@@ -114,6 +114,10 @@ class FacilitatorKeyIssuer(Protocol):
     ) -> tuple[str, str]: ...
 
 
+class DeterministicProvisioningRejection(InvariantViolation):
+    """The facilitator observed and rejected a request without issuing a key."""
+
+
 class CeloFacilitatorKeyIssuer:
     def __init__(self, base_url: str = FACILITATOR_PORTAL) -> None:
         if base_url.rstrip("/") != FACILITATOR_PORTAL:
@@ -134,6 +138,9 @@ class CeloFacilitatorKeyIssuer:
             raise InvariantViolation(
                 'facilitator provisioning requires: pip install -e ".[wallet-tools]"'
             ) from exc
+        signer_address = str(Account.from_key(private_key).address)
+        if signer_address.lower() != address.lower():
+            raise InvariantViolation("facilitator signer does not match the provisioned identity")
         with httpx.Client(
             base_url=self.base_url,
             timeout=20,
@@ -149,19 +156,28 @@ class CeloFacilitatorKeyIssuer:
                 raise InvariantViolation("facilitator returned a malformed provisioning nonce")
             message = (
                 "x402.celo.org wants you to create an x402 API key.\n\n"
-                f"Address: {address}\n"
+                f"Address: {signer_address}\n"
                 f"Nonce: {nonce}\n\n"
                 "Signing this message proves you control this wallet. "
                 "It costs no gas and sends no transaction."
             )
-            signature = Account.sign_message(
+            signature = "0x" + Account.sign_message(
                 encode_defunct(text=message), private_key=private_key
             ).signature.hex()
             before_submit()
             response = client.post(
                 "/api/keys",
-                json={"address": address, "nonce": nonce, "signature": signature},
+                json={
+                    "address": signer_address,
+                    "nonce": nonce,
+                    "signature": signature,
+                },
             )
+            if response.status_code in {400, 401, 403, 404, 422}:
+                raise DeterministicProvisioningRejection(
+                    "facilitator deterministically rejected key issuance: "
+                    f"HTTP {response.status_code}"
+                )
             response.raise_for_status()
             value = response.json()
         api_key = value.get("apiKey") if isinstance(value, dict) else None
@@ -234,6 +250,10 @@ def provision_operational_identity(
                 private_key=str(raw_identity["wallet_private_key"]),
                 before_submit=mark_in_flight,
             )
+        except DeterministicProvisioningRejection:
+            raw_identity["facilitator_key_state"] = "REJECTED"
+            vault.save(state)
+            raise
         except Exception:
             if raw_identity.get("facilitator_key_state") == "IN_FLIGHT":
                 raw_identity["facilitator_key_state"] = "AMBIGUOUS"

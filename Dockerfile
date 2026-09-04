@@ -22,4 +22,4 @@ RUN chmod 0755 /usr/local/bin/sne-sec-celo-entrypoint \
 EXPOSE 8000
 
 ENTRYPOINT ["sne-sec-celo-entrypoint"]
-CMD ["uvicorn", "sne_sec_celo.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "sne_sec_celo.api:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
