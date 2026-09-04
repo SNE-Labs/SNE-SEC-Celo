@@ -27,6 +27,30 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(response.json()["private_provider_required"])
             self.assertIsNone(response.json()["x402_settlement_admission"])
 
+    async def test_web_shell_is_served_without_shadowing_api(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            web = root / "web"
+            web.mkdir()
+            (web / "index.html").write_text(
+                "<!doctype html><title>SNE Cyber Intelligence</title>",
+                encoding="utf-8",
+            )
+            transport = ASGITransport(
+                app=create_app(database_path=root / "reviews.sqlite3", web_root=web)
+            )
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                shell = await client.get("/")
+                health = await client.get("/healthz")
+            self.assertEqual(shell.status_code, 200)
+            self.assertIn("SNE Cyber Intelligence", shell.text)
+            self.assertEqual(shell.headers["x-frame-options"], "DENY")
+            self.assertIn(
+                "frame-ancestors 'none'",
+                shell.headers["content-security-policy"],
+            )
+            self.assertEqual(health.status_code, 200)
+
     async def test_x402_cannot_be_advertised_without_dedicated_wallet(self) -> None:
         with self.assertRaisesRegex(InvariantViolation, "dedicated agent wallet"):
             AgentSettings(
@@ -167,6 +191,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
             )
             self.assertFalse(payload["x402Support"])
+            self.assertEqual(
+                payload["services"][0]["endpoint"],
+                "https://agent.example.org/",
+            )
             self.assertEqual(
                 payload["registrations"],
                 [

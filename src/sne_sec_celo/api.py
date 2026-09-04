@@ -8,7 +8,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.types import Scope
 from x402.http.middleware.fastapi import PaymentMiddlewareASGI
 
 from .agent import AGENT_SVG, AgentSettings, build_capabilities, build_registration_file
@@ -44,6 +46,25 @@ class ReviewDiffRequest(BaseModel):
     current_review_id: str = Field(min_length=1, max_length=128)
 
 
+class CyberIntelligenceStaticFiles(StaticFiles):
+    """Serve the browser surface with a closed, same-origin security policy."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self'; style-src 'self'; "
+            "img-src 'self' data:; connect-src 'self'; font-src 'self'; "
+            "object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+        )
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=()"
+        )
+        return response
+
+
 def _payload(value: object) -> object:
     return json.loads(canonical_json(value))
 
@@ -56,6 +77,7 @@ def create_app(
     x402_runtime: X402Runtime | None = None,
     assessment_provider: AssessmentProvider | None = None,
     public_example_review_id: str | None = None,
+    web_root: Path | None = None,
 ) -> FastAPI:
     path = database_path or Path(
         os.environ.get("SNE_SEC_CELO_DATABASE", ".sne-sec-celo/reviews.sqlite3")
@@ -191,6 +213,19 @@ def create_app(
             PaymentMiddlewareASGI,
             routes=payment_runtime.routes,
             server=payment_runtime.server,
+        )
+    configured_web_root = web_root
+    if configured_web_root is None:
+        configured = os.environ.get("SNE_SEC_CELO_WEB_ROOT")
+        configured_web_root = Path(configured) if configured else None
+    if configured_web_root is not None:
+        resolved_web_root = configured_web_root.resolve()
+        if not (resolved_web_root / "index.html").is_file():
+            raise InvariantViolation("configured web root has no index.html")
+        app.mount(
+            "/",
+            CyberIntelligenceStaticFiles(directory=resolved_web_root, html=True),
+            name="sne-sec-cyber-intelligence",
         )
     return app
 

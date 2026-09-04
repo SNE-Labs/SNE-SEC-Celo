@@ -51,6 +51,22 @@ $env:SNE_SEC_CELO_DATABASE = ".\reviews.sqlite3"
 & .\.venv\Scripts\uvicorn.exe sne_sec_celo.api:app --host 127.0.0.1 --port 8000
 ```
 
+Build and serve the SNE Cyber Intelligence interface from that same process:
+
+```powershell
+Set-Location web
+npm ci
+npm run build
+Set-Location ..
+$env:SNE_SEC_CELO_WEB_ROOT = (Resolve-Path .\web\dist).Path
+& .\.venv\Scripts\uvicorn.exe sne_sec_celo.api:app --host 127.0.0.1 --port 8000
+```
+
+The first functional interface path is intentionally narrow: submit a public origin, wait for the
+real assessment without simulated stages, inspect the commercially safe aggregate projection, and
+authorize the x402 full-Review delivery with an injected EVM wallet on Celo Mainnet. The payment
+client is loaded only after an explicit unlock action; wallet keys never enter the server.
+
 The reference surface exposes:
 
 ```text

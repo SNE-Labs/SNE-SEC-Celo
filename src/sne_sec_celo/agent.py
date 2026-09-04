@@ -74,7 +74,7 @@ def build_registration_file(settings: AgentSettings) -> dict[str, object]:
     services: list[dict[str, str]] = [
         {
             "name": "web",
-            "endpoint": f"{settings.public_base_url}/docs",
+            "endpoint": f"{settings.public_base_url}/",
             "version": "1.0.0",
         },
         {
