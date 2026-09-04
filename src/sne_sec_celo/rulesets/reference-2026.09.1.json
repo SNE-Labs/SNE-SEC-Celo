@@ -1,0 +1,111 @@
+{
+  "version": "reference-2026.09.1",
+  "rules": [
+    {
+      "id": "REF.HTTP.HSTS.PRESENT",
+      "version": 1,
+      "title": "HTTP Strict Transport Security is not enabled",
+      "observation_kind": "HTTP_HEADER",
+      "observation_key": "strict-transport-security",
+      "expected_present": true,
+      "required_scheme": "https",
+      "severity": "MEDIUM",
+      "confidence": "CERTAIN",
+      "observation_summary": "The final HTTPS response did not include Strict-Transport-Security.",
+      "impact": "Browsers are not instructed to require HTTPS for later visits to this origin.",
+      "remediation": "Return Strict-Transport-Security on HTTPS responses after confirming every covered host supports HTTPS.",
+      "verification": "Run another Review and confirm REF.HTTP.HSTS.PRESENT evaluates PASS.",
+      "references": [
+        {
+          "authority": "MDN",
+          "title": "Strict-Transport-Security header",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security"
+        }
+      ]
+    },
+    {
+      "id": "REF.HTTP.CSP.PRESENT",
+      "version": 1,
+      "title": "Content Security Policy is not declared",
+      "observation_kind": "HTTP_HEADER",
+      "observation_key": "content-security-policy",
+      "expected_present": true,
+      "severity": "MEDIUM",
+      "confidence": "CERTAIN",
+      "observation_summary": "The final response did not include Content-Security-Policy.",
+      "impact": "The browser has no origin-specific CSP restrictions to limit unexpected resource execution.",
+      "remediation": "Deploy a tested Content-Security-Policy tailored to the application and monitor violations before tightening it.",
+      "verification": "Run another Review and confirm REF.HTTP.CSP.PRESENT evaluates PASS.",
+      "references": [
+        {
+          "authority": "W3C",
+          "title": "Content Security Policy Level 3",
+          "url": "https://www.w3.org/TR/CSP3/"
+        }
+      ]
+    },
+    {
+      "id": "REF.HTTP.NOSNIFF.PRESENT",
+      "version": 1,
+      "title": "MIME sniffing protection is not declared",
+      "observation_kind": "HTTP_HEADER",
+      "observation_key": "x-content-type-options",
+      "expected_present": true,
+      "severity": "LOW",
+      "confidence": "CERTAIN",
+      "observation_summary": "The final response did not include X-Content-Type-Options.",
+      "impact": "Some responses may be interpreted using MIME sniffing instead of the declared content type.",
+      "remediation": "Return X-Content-Type-Options: nosniff on application responses.",
+      "verification": "Run another Review and confirm REF.HTTP.NOSNIFF.PRESENT evaluates PASS.",
+      "references": [
+        {
+          "authority": "MDN",
+          "title": "X-Content-Type-Options header",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options"
+        }
+      ]
+    },
+    {
+      "id": "REF.HTTP.REFERRER_POLICY.PRESENT",
+      "version": 1,
+      "title": "Referrer policy is not declared",
+      "observation_kind": "HTTP_HEADER",
+      "observation_key": "referrer-policy",
+      "expected_present": true,
+      "severity": "LOW",
+      "confidence": "CERTAIN",
+      "observation_summary": "The final response did not include Referrer-Policy.",
+      "impact": "The origin relies on browser defaults for cross-origin referrer disclosure.",
+      "remediation": "Return an explicit Referrer-Policy compatible with the application's navigation requirements.",
+      "verification": "Run another Review and confirm REF.HTTP.REFERRER_POLICY.PRESENT evaluates PASS.",
+      "references": [
+        {
+          "authority": "MDN",
+          "title": "Referrer-Policy header",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy"
+        }
+      ]
+    },
+    {
+      "id": "REF.HTTP.PERMISSIONS_POLICY.PRESENT",
+      "version": 1,
+      "title": "Permissions Policy is not declared",
+      "observation_kind": "HTTP_HEADER",
+      "observation_key": "permissions-policy",
+      "expected_present": true,
+      "severity": "LOW",
+      "confidence": "CERTAIN",
+      "observation_summary": "The final response did not include Permissions-Policy.",
+      "impact": "Browser feature access is not constrained by an origin-specific policy header.",
+      "remediation": "Return a Permissions-Policy that grants only browser features required by the application.",
+      "verification": "Run another Review and confirm REF.HTTP.PERMISSIONS_POLICY.PRESENT evaluates PASS.",
+      "references": [
+        {
+          "authority": "MDN",
+          "title": "Permissions-Policy header",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy"
+        }
+      ]
+    }
+  ]
+}

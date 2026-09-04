@@ -29,6 +29,51 @@ The repository is being built during the Celo Agents at Work hackathon. Every ca
 a reviewable commit with tests and, where an external effect exists, a separately recorded witness.
 No testnet or simulated transaction is presented as mainnet adoption evidence.
 
+## Run the reference provider
+
+Python 3.12 or newer is required.
+
+```powershell
+python -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+$env:PYTHONPATH = "src"
+& .\.venv\Scripts\sne-sec-celo.exe --database .\reviews.sqlite3 review https://celo.org --output .\review.json
+```
+
+This performs a real HTTPS assessment using a DNS- and peer-pinned transport. It records only
+bounded response metadata and presence facts for five security headers; response bodies, cookies,
+credentials, and redirect query strings do not enter Evidence.
+
+Run the API:
+
+```powershell
+$env:SNE_SEC_CELO_DATABASE = ".\reviews.sqlite3"
+& .\.venv\Scripts\uvicorn.exe sne_sec_celo.api:app --host 127.0.0.1 --port 8000
+```
+
+The reference surface exposes:
+
+```text
+GET  /healthz
+POST /v1/reference/reviews
+GET  /v1/reviews/{review_id}
+POST /v1/review-diffs
+```
+
+Every persisted Review is append-only at the database boundary. Rescanning creates another Review
+and `ReviewDiff` classifies resolution, regression, unchanged results, and coverage changes.
+
+## Verify
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m unittest discover -s tests -v
+python -m ruff check .
+python -m mypy src
+python scripts\witness_reference_path.py https://celo.org
+docker build -t sne-sec-celo .
+```
+
 See [the public/private boundary](docs/architecture/public-private-boundary.md) and
 [the constitution](CONSTITUTION.md).
 

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sne-sec-celo"
+version = "1.0.0"
+description = "Open-source Celo agent and evidence protocol for security assessments"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "SNE Labs" }]
+dependencies = [
+  "fastapi>=0.116,<1",
+  "pydantic>=2.11,<3",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "mypy>=1.17,<2",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+sne-sec-celo = "sne_sec_celo.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sne_sec_celo"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/sne_sec_celo/rulesets" = "sne_sec_celo/rulesets"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["sne_sec_celo"]
