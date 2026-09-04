@@ -84,6 +84,18 @@ Both commands prompt for the password without accepting it as an argument or env
 The bundle contains one encrypted Web3 keystore, a public manifest bound to `eip155:42220`, and
 backup instructions. Only the public address and public manifest are admissible for registration.
 
+## Hosted agent URI
+
+The public reference agent is deployed from this repository at:
+
+```text
+https://sne-sec-celo-agent-production.up.railway.app/.well-known/agent.json
+```
+
+The Railway service uses the repository Dockerfile, a persistent `/data` volume for append-only
+reference Reviews, and `/healthz` as its deployment gate. Wallet private material is never present
+in the service.
+
 ## Verify
 
 ```powershell
