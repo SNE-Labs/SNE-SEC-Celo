@@ -1,0 +1,30 @@
+version: 1
+policy:
+  runtime_dependencies_on_source_repositories: forbidden
+  private_sources: semantic_reference_only
+  copied_code_requires_explicit_license: true
+entries:
+  - source: 4LFR3Dv1/SNE-SEC
+    commit: 7ff69b1a6053b518790442973276c847813bc7b0
+    disposition: semantic_reference_only
+    code_copied: false
+    source_artifacts:
+      - AGENTS.md
+      - CONSTITUTION.md
+      - src/sne_security_review/canonical.py
+      - src/sne_security_review/targets/
+      - src/sne_security_review/evidence/
+      - src/sne_security_review/rules/
+      - src/sne_security_review/reviews/
+    concepts:
+      - completed Reviews are immutable and rescans create distinct Reviews
+      - collector output has no severity
+      - Findings require same-Review admitted Evidence and a failed versioned RuleEvaluation
+      - unknown and non-applicable outcomes are never PASS
+      - canonical objects reject floating-point values
+      - target admission validates names, DNS answers, redirects, and connected peers
+      - assessment, commerce, settlement, and entitlement state machines are orthogonal
+    destinations:
+      - CONSTITUTION.md
+      - docs/architecture/public-private-boundary.md
+      - src/sne_sec_celo/
