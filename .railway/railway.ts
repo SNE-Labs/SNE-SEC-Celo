@@ -44,6 +44,7 @@ export default defineRailway(() => {
     variables: {
       PORT: "8000",
       SNE_SEC_CELO_AGENT_WALLET: preserve(),
+      SNE_SEC_CELO_ERC8004_AGENT_ID: preserve(),
       SNE_SEC_CELO_PUBLIC_BASE_URL: preserve(),
       SNE_SEC_CELO_RPC_URL: "https://forno.celo.org",
       SNE_SEC_CELO_X402_AMOUNT_ATOMIC: "10000",

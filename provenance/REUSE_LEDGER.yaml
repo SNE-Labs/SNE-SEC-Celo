@@ -85,12 +85,19 @@ entries:
     code_copied: false
     source_artifacts:
       - src/sne_askbot/provision.py
+      - src/sne_askbot/collector/celo.py
+      - src/sne_askbot/collector/signer.py
+      - src/sne_askbot/collector/executor.py
       - docs/OPERATIONS.md
+      - docs/COLLECTOR.md
     concepts:
       - Windows-user-bound DPAPI vault for local operational signing material
       - save-before-effect provisioning and durable ambiguous-effect state
       - secret publication to Railway through standard input without command arguments
       - safe summaries expose public identities but never private keys or API keys
+      - CIP-64 fee-currency transactions use type 0x7b with the adapter in the signed envelope
+      - transaction intent and hash are durable before a single ambiguity-aware broadcast
     destinations:
       - src/sne_sec_celo/operational_provisioning.py
+      - src/sne_sec_celo/erc8004_registration.py
       - docs/operations/provisioning.md

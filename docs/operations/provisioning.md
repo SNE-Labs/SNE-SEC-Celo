@@ -39,3 +39,17 @@ summary contains only public addresses, a credential prefix, and the vault path.
 
 This command does not perform an ERC-8004 transaction. Registry minting remains a separate,
 explicit on-chain effect requiring gas and its own witness.
+
+After independently funding the dedicated identity with an admitted Celo fee currency, persist and
+broadcast the one-shot mint intent. The command signs inside the DPAPI boundary, persists only the
+transaction hash, and never retries a broadcast whose result is ambiguous:
+
+```powershell
+& .\.venv\Scripts\sne-sec-celo-register.exe mint `
+  --agent-uri https://sne-sec-celo-agent-production.up.railway.app/.well-known/agent.json
+
+& .\.venv\Scripts\sne-sec-celo-register.exe reconcile
+```
+
+Only a canonical receipt with one matching ERC-721 `Transfer`, one matching `Registered` event,
+the exact owner and URI, and a fee below the durable cap can produce `RECONCILED`.
