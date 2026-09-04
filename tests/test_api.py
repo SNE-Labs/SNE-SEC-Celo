@@ -52,6 +52,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             payment.pay_to,
             "0x34385fc3b012ae8980e17f6c3224a5ae0f946289",
         )
+        self.assertEqual(payment.amount_atomic, 1_000_000)
         self.assertNotEqual(payment.pay_to, agent.wallet_address)
 
     async def test_private_target_is_rejected_before_transport(self) -> None:

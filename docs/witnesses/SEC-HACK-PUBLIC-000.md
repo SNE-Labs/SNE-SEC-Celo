@@ -1,7 +1,8 @@
 # SEC-HACK-PUBLIC-000 witness
 
 Date: 2026-09-04
-Status: gates 1–5 and hosted Railway witness complete; gates 6–8 deliberately require separately controlled external effects
+Status: reference, Railway, x402 identity, and ERC-8004 registration gates complete; an independent
+buyer payment and the formal hackathon submission remain separate external effects
 
 ## Public boundary
 
@@ -61,8 +62,9 @@ The witness records bounded metadata only. It does not claim a full production a
 ## External-effect boundary
 
 No wallet, ERC-8004 identity, facilitator authorization, or Celo mainnet transaction was created by
-this gate. Those actions require a dedicated operational wallet, external registration, and
-attribution admission. Mainnet activity remains forbidden until those controls are complete.
+this initial gate. Those actions required a dedicated operational wallet, external registration,
+and attribution admission. The later sections record the controls and effects subsequently
+completed on Celo Mainnet.
 
 ## Hosted Railway witness
 
@@ -195,3 +197,10 @@ The dedicated identity was registered after an independently reconciled fee-fund
 
 The signing key remained inside the Windows DPAPI vault. No raw signed transaction was persisted,
 and the initially unobserved broadcast response was reconciled by transaction hash without a retry.
+
+## Security Passport launch price
+
+The initial `10000` atomic-unit x402 offer above was a deployment smoke-test price, not a claim
+about sustainable product economics. The launch pricing change raises the public Security Passport
+delivery price to `1000000` atomic units (`1 USDC`). The asset, network, treasury destination,
+settlement admission policy, and immutable Review remain unchanged.

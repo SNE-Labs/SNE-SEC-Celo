@@ -60,7 +60,7 @@ CELO_RPC_URL = "https://forno.celo.org"
 class X402Settings:
     enabled: bool
     pay_to: str | None = None
-    amount_atomic: int = 10_000
+    amount_atomic: int = 1_000_000
     facilitator_url: str = CELO_FACILITATOR_URL
     rpc_url: str = CELO_RPC_URL
     min_confirmations: int = 1
@@ -84,7 +84,7 @@ class X402Settings:
 
     @classmethod
     def from_environment(cls, agent: AgentSettings) -> X402Settings:
-        raw_amount = os.environ.get("SNE_SEC_CELO_X402_AMOUNT_ATOMIC", "10000")
+        raw_amount = os.environ.get("SNE_SEC_CELO_X402_AMOUNT_ATOMIC", "1000000")
         raw_confirmations = os.environ.get("SNE_SEC_CELO_X402_MIN_CONFIRMATIONS", "1")
         try:
             amount = int(raw_amount)

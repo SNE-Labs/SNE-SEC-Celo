@@ -118,7 +118,7 @@ class X402IntegrationTests(unittest.IsolatedAsyncioTestCase):
             payment_store = SQLitePaymentStore(database)
             payment_store.initialize()
             facilitator = FakeFacilitator(payment_store)
-            settings = X402Settings(enabled=True, pay_to=PAYEE)
+            settings = X402Settings(enabled=True, pay_to=PAYEE, amount_atomic=10_000)
             runtime = build_x402_runtime(
                 settings=settings,
                 store=payment_store,
@@ -170,7 +170,7 @@ class X402IntegrationTests(unittest.IsolatedAsyncioTestCase):
             facilitator = FakeFacilitator(payment_store)
             rpc = FakeRPC()
             rpc.chain_id = "0x1"
-            settings = X402Settings(enabled=True, pay_to=PAYEE)
+            settings = X402Settings(enabled=True, pay_to=PAYEE, amount_atomic=10_000)
             runtime = build_x402_runtime(
                 settings=settings,
                 store=payment_store,

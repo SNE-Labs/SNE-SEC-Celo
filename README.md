@@ -70,7 +70,8 @@ and `ReviewDiff` classifies resolution, regression, unchanged results, and cover
 
 The optional paid delivery route uses x402 v2 `exact` with Celo mainnet USDC. Its offer is explicit:
 `eip155:42220`, asset `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`, six decimals,
-and an integer atomic amount. Dollar shorthand and implicit assets are not admitted.
+and an integer atomic amount. The public Security Passport launch price is `1000000` atomic units,
+or `1 USDC`. Dollar shorthand and implicit assets are not admitted.
 
 The facilitator does not decide settlement truth. Before `/settle`, the service durably records a
 payment intent without retaining the signature or raw authorization. After a successful
