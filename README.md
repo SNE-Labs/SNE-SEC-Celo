@@ -94,9 +94,10 @@ https://sne-sec-celo-agent-production.up.railway.app/.well-known/agent.json
 
 The Railway service uses the repository Dockerfile, the checked-in `.railway/railway.ts`
 infrastructure definition, a persistent `/data` volume for append-only reference Reviews, and
-`/healthz` as its deployment gate. A minimal root entrypoint admits ownership of the mounted
-volume and immediately replaces itself with the application running as the unprivileged `sne-sec`
-user. Wallet private material is never present in the service.
+`/healthz` as its deployment gate. The IaC binds the application, service domain, and Railway
+healthcheck to port 8000. A minimal root entrypoint admits ownership of the mounted volume and
+immediately replaces itself with the application running as the unprivileged `sne-sec` user.
+Wallet private material is never present in the service.
 
 ## Verify
 

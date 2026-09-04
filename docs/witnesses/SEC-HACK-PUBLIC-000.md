@@ -1,7 +1,7 @@
 # SEC-HACK-PUBLIC-000 witness
 
 Date: 2026-09-04
-Status: gates 1–5 complete; gates 6–8 deliberately require separately controlled external effects
+Status: gates 1–5 and hosted Railway witness complete; gates 6–8 deliberately require separately controlled external effects
 
 ## Public boundary
 
@@ -63,3 +63,28 @@ The witness records bounded metadata only. It does not claim a full production a
 No wallet, ERC-8004 identity, facilitator authorization, or Celo mainnet transaction was created by
 this gate. Those actions require a dedicated operational wallet, external registration, and
 attribution admission. Mainnet activity remains forbidden until those controls are complete.
+
+## Hosted Railway witness
+
+The production deployment correction was witnessed on 2026-09-04:
+
+- commit `f839494` introduced a minimal root entrypoint that admits ownership of the dedicated
+  `/data` volume and immediately replaces itself with the application as `sne-sec`;
+- GitHub Actions run `33896134603` passed the Python proof, typed Railway IaC, Linux image build,
+  and a container witness seeded with a root-owned SQLite file;
+- the local container witness observed a healthy API, effective PID 1 UID `999`, and
+  `reviews.sqlite3` owned by `sne-sec:sne-sec`;
+- the deprecated `railway.json` configuration was replaced by `.railway/railway.ts` without
+  deleting or replacing the existing source, domain, variable, or volume;
+- Railway deployment `6ca5cce9-8c4b-4046-9e17-d3213f9d62a9` passed `/healthz` after the declared
+  `PORT=8000` was bound to the existing target port;
+- public Review `review_ac8c7054897c4ec9ada5feae8dfcf8f3` completed against
+  `https://celo.org` with 6 Observations, 6 Evidence records, 5 RuleEvaluations, 3 Findings, and
+  score 89;
+- its result digest
+  `sha256:ab13ab447559a501f93509009e5486ba144208bacbd945d2d736c7d72b54c16e` was reproduced before
+  and after an explicit service restart, proving durable retrieval from the mounted volume.
+
+The failed predecessors were not counted as successful deployments: the first could not open
+SQLite on the mounted volume, and the second started the application but failed the Railway
+healthcheck because its target port was not declared as `PORT`.

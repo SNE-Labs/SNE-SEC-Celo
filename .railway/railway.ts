@@ -32,8 +32,6 @@ export default defineRailway(() => {
       healthcheckTimeout: 120,
       ipv6EgressEnabled: false,
       multiRegionConfig: { "us-west2": { numReplicas: 1 } },
-      restartPolicyMaxRetries: 10,
-      restartPolicyType: "ON_FAILURE",
       runtime: "V2",
       useLegacyStacker: false,
     },
@@ -44,6 +42,7 @@ export default defineRailway(() => {
       },
     },
     variables: {
+      PORT: "8000",
       SNE_SEC_CELO_PUBLIC_BASE_URL: preserve(),
     },
     volumeMounts: {
