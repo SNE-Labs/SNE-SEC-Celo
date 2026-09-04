@@ -162,8 +162,36 @@ transaction:
 - Railway deployment `11291010-c17b-4e09-81a1-c05950951a83` passed `/healthz` with x402 enabled;
 - the protected Review endpoint returned HTTP 402 advertising x402 v2 `exact`, network
   `eip155:42220`, Celo USDC, amount `10000` atomic units, and the exact treasury destination;
-- the public ERC-8004 registration document advertises the dedicated wallet and x402 support, but
-  its `registrations` list remains empty because no registry mint was performed.
+- before the separate registry effect, the public ERC-8004 registration document advertised the
+  dedicated wallet and x402 support with an empty `registrations` list.
 
-This gate proves a live payment offer and facilitator readiness. It does not claim a buyer payment
-or ERC-8004 mainnet registration.
+This gate proves a live payment offer and facilitator readiness. It does not claim a buyer payment;
+the later ERC-8004 effect is witnessed separately below.
+
+## ERC-8004 Celo Mainnet registration
+
+The dedicated identity was registered after an independently reconciled fee-funding effect:
+
+- the agent wallet received `0.020000 USDT`; the funding record is bound by evidence digest
+  `sha256:b391abdc8b5c0cb6ecc3b9a2667861902a396fe5a4b9db40dc0ab87d493877d6`;
+- commit `ff8b93e` materialized the one-shot CIP-64 registration authority, durable pre-broadcast
+  intent, ambiguity barrier, exact event reconciliation, and Railway variable preservation;
+- GitHub Actions run `33916363454` passed Python tests, Ruff, strict mypy, typed Railway IaC,
+  Linux image build, and the mounted-volume witness before signing;
+- intent `sha256:84eba9e448fab7bceaa63723778744b39f3874f26a6427adee1f538ae907d644`
+  fixed Celo Mainnet, the canonical Identity Registry, agent URI, nonce `0`, USDT adapter, and a
+  maximum fee of `0.010000 USDT`;
+- transaction
+  `0x6ae40af15a121c933f18a9a6dd15c2926549b80aad195f6af088e5d4ebb63381` was mined in
+  canonical block `76652997` with exactly one matching ERC-721 `Transfer` and one `Registered`
+  event, producing agent ID `9814` owned by the dedicated identity;
+- net USDT fee transfers prove an exact charge of `0.004276 USDT`, no native CELO was required,
+  and the agent retained `0.015724 USDT`;
+- the admitted registration evidence digest is
+  `sha256:e941dd6d5e6e9ee57d8318b1c77f890903972aa024d2de8298a6cdaf468373be`;
+- Railway deployment `f04a14d9-29e0-4d93-afe5-b7f0d12dd25a` passed `/healthz`; the public
+  registration file and capabilities endpoint both report agent ID `9814`, while x402 remains
+  enabled with the separate operator treasury as `payTo`.
+
+The signing key remained inside the Windows DPAPI vault. No raw signed transaction was persisted,
+and the initially unobserved broadcast response was reconciled by transaction hash without a retry.

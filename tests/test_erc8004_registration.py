@@ -91,6 +91,7 @@ class FakeRegistrationRPC:
         if not self.mined or tx_hash != self.sent_hash:
             return None
         owner = "0x" + AGENT[2:].rjust(64, "0")
+        fee_pool = "0x" + "12" * 12 + "34" * 20
         agent_id = "0x" + hex(123)[2:].rjust(64, "0")
         zero = "0x" + "0" * 64
         return {
@@ -101,12 +102,22 @@ class FakeRegistrationRPC:
             "effectiveGasPrice": "0x2540be400",
             "logs": [
                 {
+                    "address": CELO_MAINNET_USDT,
+                    "topics": [TRANSFER_TOPIC, owner, fee_pool],
+                    "data": "0x" + hex(2_500)[2:].rjust(64, "0"),
+                },
+                {
                     "address": CELO_IDENTITY_REGISTRY,
                     "topics": [TRANSFER_TOPIC, zero, owner, agent_id],
                 },
                 {
                     "address": CELO_IDENTITY_REGISTRY,
                     "topics": [REGISTERED_TOPIC, agent_id, owner],
+                },
+                {
+                    "address": CELO_MAINNET_USDT,
+                    "topics": [TRANSFER_TOPIC, fee_pool, owner],
+                    "data": "0x" + hex(500)[2:].rjust(64, "0"),
                 },
             ],
         }

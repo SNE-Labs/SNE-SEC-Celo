@@ -488,7 +488,13 @@ def reconcile_registration(
     if not isinstance(record, dict):
         raise InvariantViolation("no ERC-8004 registration intent exists")
     if record.get("state") == "RECONCILED":
-        return _safe_reconciliation(record)
+        existing_evidence = record.get("evidence")
+        if (
+            isinstance(existing_evidence, dict)
+            and existing_evidence.get("fee_observation_policy")
+            == "celo-usdt-transfer-net-v1"
+        ):
+            return _safe_reconciliation(record)
     transaction = _transaction_from_record(record)
     tx_hash = record.get("transaction_hash")
     if not isinstance(tx_hash, str):
@@ -524,13 +530,28 @@ def reconcile_registration(
     owner_word = "0x" + transaction.source[2:].rjust(64, "0")
     transfers: list[tuple[int, dict[str, object]]] = []
     registrations: list[int] = []
+    fee_debits: list[int] = []
+    fee_refunds: list[int] = []
     for log in logs:
-        if not isinstance(log, dict) or str(log.get("address", "")).lower() != transaction.registry:
+        if not isinstance(log, dict):
             continue
         topics = log.get("topics")
         if not isinstance(topics, list):
             continue
         normalized_topics = [str(topic).lower() for topic in topics]
+        log_address = str(log.get("address", "")).lower()
+        if (
+            log_address == CELO_MAINNET_USDT
+            and len(normalized_topics) == 3
+            and normalized_topics[0] == TRANSFER_TOPIC
+        ):
+            amount = _quantity(log.get("data"), "USDT Transfer amount")
+            if normalized_topics[1] == owner_word:
+                fee_debits.append(amount)
+            if normalized_topics[2] == owner_word:
+                fee_refunds.append(amount)
+        if log_address != transaction.registry:
+            continue
         if (
             len(normalized_topics) == 4
             and normalized_topics[0] == TRANSFER_TOPIC
@@ -557,7 +578,11 @@ def reconcile_registration(
         receipt.get("effectiveGasPrice"), "receipt effective gas price"
     )
     fee_atomic_18 = gas_used * effective_gas_price
-    fee_usdt_atomic = (fee_atomic_18 + USDT_SCALE - 1) // USDT_SCALE
+    fee_calculation_floor = fee_atomic_18 // USDT_SCALE
+    fee_calculation_ceiling = (fee_atomic_18 + USDT_SCALE - 1) // USDT_SCALE
+    fee_usdt_atomic = sum(fee_debits) - sum(fee_refunds)
+    if fee_usdt_atomic not in {fee_calculation_floor, fee_calculation_ceiling}:
+        raise InvariantViolation("observed USDT fee transfers diverge from receipt gas facts")
     if fee_usdt_atomic > MAX_FEE_USDT_ATOMIC:
         raise InvariantViolation("ERC-8004 actual fee exceeds durable intent cap")
     evidence = {
@@ -574,6 +599,10 @@ def reconcile_registration(
         "gas_used": gas_used,
         "effective_gas_price_atomic_18": effective_gas_price,
         "fee_usdt_atomic": fee_usdt_atomic,
+        "fee_calculation_ceiling_usdt_atomic": fee_calculation_ceiling,
+        "fee_observation_policy": "celo-usdt-transfer-net-v1",
+        "fee_debit_events": len(fee_debits),
+        "fee_refund_events": len(fee_refunds),
         "transfer_events": 1,
         "registered_events": 1,
     }

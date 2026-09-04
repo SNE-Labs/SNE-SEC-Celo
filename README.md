@@ -139,8 +139,9 @@ x402 `payTo`, and enables Railway only after every prerequisite is present:
   --enable
 ```
 
-See [operational provisioning](docs/operations/provisioning.md). ERC-8004 registration remains a
-separate on-chain effect.
+See [operational provisioning](docs/operations/provisioning.md). The production identity is
+registered on Celo Mainnet as ERC-8004 agent `9814`; the mint remains a separate, one-shot
+on-chain effect from ordinary hosted provisioning.
 
 ## Hosted agent URI
 
