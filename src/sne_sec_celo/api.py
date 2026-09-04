@@ -9,13 +9,22 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
+from x402.http.middleware.fastapi import PaymentMiddlewareASGI
 
 from .agent import AGENT_SVG, AgentSettings, build_capabilities, build_registration_file
 from .canonical import canonical_json
-from .errors import CollectionFailed, ReviewAlreadyExists, ReviewNotFound, TargetRejected
+from .errors import (
+    CollectionFailed,
+    InvariantViolation,
+    ReviewAlreadyExists,
+    ReviewNotFound,
+    TargetRejected,
+)
+from .payment_store import SQLitePaymentStore
 from .provider import ReferenceAssessmentProvider
 from .service import ReviewService
 from .store import SQLiteReviewStore
+from .x402_runtime import X402Runtime, X402Settings, build_x402_runtime
 
 
 class CreateReviewRequest(BaseModel):
@@ -34,7 +43,11 @@ def _payload(value: object) -> object:
 
 
 def create_app(
-    *, database_path: Path | None = None, agent_settings: AgentSettings | None = None
+    *,
+    database_path: Path | None = None,
+    agent_settings: AgentSettings | None = None,
+    x402_settings: X402Settings | None = None,
+    x402_runtime: X402Runtime | None = None,
 ) -> FastAPI:
     path = database_path or Path(
         os.environ.get("SNE_SEC_CELO_DATABASE", ".sne-sec-celo/reviews.sqlite3")
@@ -43,12 +56,32 @@ def create_app(
     store.initialize()
     service = ReviewService(ReferenceAssessmentProvider(), store)
     settings = agent_settings or AgentSettings.from_environment()
+    payment_settings = x402_settings or X402Settings.from_environment(settings)
+    if payment_settings.enabled != settings.x402_enabled:
+        raise InvariantViolation("agent and x402 enabled states must agree")
+    if (
+        payment_settings.enabled
+        and settings.wallet_address is not None
+        and payment_settings.pay_to != settings.wallet_address.lower()
+    ):
+        raise InvariantViolation("x402 payTo must equal the dedicated agent wallet")
     app = FastAPI(
         title="SNE-SEC Celo Agent",
         version="1.0.0",
         description="Open agent and evidence protocol with an executable reference provider.",
     )
     app.state.review_service = service
+    payment_runtime: X402Runtime | None = None
+    if payment_settings.enabled:
+        payment_store = SQLitePaymentStore(path)
+        payment_store.initialize()
+        payment_runtime = x402_runtime or build_x402_runtime(
+            settings=payment_settings,
+            store=payment_store,
+        )
+        if payment_runtime.store.database_path != path.resolve():
+            raise InvariantViolation("x402 ledger must share the configured durable database")
+        app.state.payment_store = payment_runtime.store
 
     @app.get("/.well-known/agent.json")
     @app.get("/.well-known/agent-registration.json", include_in_schema=False)
@@ -72,6 +105,9 @@ def create_app(
             "private_provider_required": False,
             "erc8004_registered": settings.agent_id is not None,
             "x402_enabled": settings.x402_enabled,
+            "x402_settlement_admission": (
+                "INDEPENDENT_CELO_CONFIRMATIONS" if settings.x402_enabled else None
+            ),
         }
 
     @app.post("/v1/reference/reviews", status_code=201)
@@ -92,6 +128,15 @@ def create_app(
         except ReviewNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    if payment_runtime is not None:
+
+        @app.get("/v1/x402/reviews/{review_id}")
+        def get_paid_review(review_id: str) -> object:
+            try:
+                return _payload(service.get_review(review_id))
+            except ReviewNotFound as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.post("/v1/review-diffs")
     def compare_reviews(request: ReviewDiffRequest) -> object:
         try:
@@ -101,6 +146,12 @@ def create_app(
         except ReviewNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    if payment_runtime is not None:
+        app.add_middleware(
+            PaymentMiddlewareASGI,
+            routes=payment_runtime.routes,
+            server=payment_runtime.server,
+        )
     return app
 
 

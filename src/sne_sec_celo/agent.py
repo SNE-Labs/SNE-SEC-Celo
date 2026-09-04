@@ -38,6 +38,8 @@ class AgentSettings:
             raise InvariantViolation("ERC-8004 agent ID cannot be negative")
         if self.agent_id is not None and self.wallet_address is None:
             raise InvariantViolation("registered ERC-8004 identity requires its wallet address")
+        if self.x402_enabled and self.wallet_address is None:
+            raise InvariantViolation("enabled x402 requires the dedicated agent wallet address")
         object.__setattr__(self, "public_base_url", base)
 
     @classmethod

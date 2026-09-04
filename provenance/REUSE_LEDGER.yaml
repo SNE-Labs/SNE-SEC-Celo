@@ -1,8 +1,9 @@
 version: 1
 policy:
-  runtime_dependencies_on_source_repositories: forbidden
+  private_source_runtime_dependencies: forbidden
   private_sources: semantic_reference_only
   copied_code_requires_explicit_license: true
+  third_party_runtime_dependencies: version_pinned_and_license_reviewed
 entries:
   - source: 4LFR3Dv1/SNE-SEC
     commit: 7ff69b1a6053b518790442973276c847813bc7b0
@@ -31,3 +32,50 @@ entries:
       - CONSTITUTION.md
       - docs/architecture/public-private-boundary.md
       - src/sne_sec_celo/
+  - source: x402-foundation/x402
+    commit: 5df361d591fd3df74eb363296347b2ed57e8f413
+    disposition: version_pinned_runtime_dependency
+    package: x402==2.22.0
+    license: MIT
+    code_copied: false
+    source_artifacts:
+      - python/x402/server.py
+      - python/x402/server_base.py
+      - python/x402/http/middleware/fastapi.py
+      - python/x402/mechanisms/evm/exact/server.py
+      - python/x402/mechanisms/evm/types.py
+    concepts:
+      - x402 v2 exact EVM payment requirements
+      - before-settle and after-settle resource-server hooks
+      - EIP-3009 authorization payload shape
+      - HTTP 402 response and paid retry transport
+    destinations:
+      - pyproject.toml
+      - src/sne_sec_celo/x402_runtime.py
+  - source: celo-org/docs
+    commit: 820d54af20a6d6024a6caae7cfb667f591e19446
+    disposition: semantic_reference_only
+    code_copied: false
+    source_artifacts:
+      - build-on-celo/build-with-ai/x402.mdx
+      - build-on-celo/build-with-ai/8004.mdx
+    concepts:
+      - Celo-hosted facilitator endpoint and authentication boundary
+      - Celo mainnet CAIP-2 identity
+      - Celo mainnet USDC asset address, decimals, and EIP-712 domain
+      - ERC-8004 Celo mainnet registry address
+    destinations:
+      - src/sne_sec_celo/agent.py
+      - src/sne_sec_celo/payments.py
+      - src/sne_sec_celo/x402_runtime.py
+  - source: ethereum/EIPs
+    commit: 9207c6011f526bd40abd79649484a1a342585bd4
+    disposition: semantic_reference_only
+    code_copied: false
+    source_artifacts:
+      - EIPS/eip-3009.md
+    concepts:
+      - TransferWithAuthorization calldata and authorization nonce binding
+      - AuthorizationUsed and ERC-20 Transfer event semantics
+    destinations:
+      - src/sne_sec_celo/celo_settlement.py

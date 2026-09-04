@@ -88,3 +88,45 @@ The production deployment correction was witnessed on 2026-09-04:
 The failed predecessors were not counted as successful deployments: the first could not open
 SQLite on the mounted volume, and the second started the application but failed the Railway
 healthcheck because its target port was not declared as `PORT`.
+
+## x402 settlement-admission implementation
+
+The next gate was implemented locally without creating a wallet, authorization, facilitator
+settlement, or mainnet transaction:
+
+- x402 Python SDK `2.22.0` is pinned and its inspected upstream commit is recorded in the reuse
+  ledger;
+- the paid Review route is absent unless x402 is explicitly enabled with a dedicated public
+  `payTo` address and a runtime-only facilitator credential;
+- a before-settle hook writes the exact payment intent before the facilitator may cause an
+  external effect;
+- a successful facilitator response is persisted as a claim, never accepted as settlement;
+- an independent Celo RPC verifier binds chain `42220`, the direct EIP-3009 calldata and nonce,
+  exact USDC payer/payee/amount, one Transfer log, canonical block hash, and the configured
+  latest-head confirmation policy;
+- the Review body remains buffered and is replaced by a 402 failure if independent admission
+  cannot complete;
+- a retry can recover a durable ambiguous facilitator claim through independent observation and
+  skip a second settlement call;
+- append-only SQLite uniqueness rejects authorization, transaction, event, observation, and
+  settlement replay.
+
+The deterministic integration witness exercised `402 -> signed retry -> facilitator claim ->
+independent Celo observation -> delivery` and the negative case where a successful facilitator
+  claim was followed by an RPC chain mismatch. The first delivered the immutable Review; the second
+  returned 402 and created no settlement, then recovered on retry without a second facilitator
+  settlement call once the independent source agreed. A read-only live probe observed Celo RPC chain ID
+`0xa4ec`, a non-null `finalized` block, and Celo facilitator support for x402 v2 `exact` on
+`eip155:42220`.
+
+This is implementation evidence, not mainnet adoption evidence. Enabling the hosted route and
+recording one real payment remain separately controlled external effects.
+
+Local gate results for this implementation on 2026-09-04:
+
+- 24 unit, domain, persistence, and API integration tests: PASS;
+- Ruff and strict mypy over 21 source files: PASS;
+- TypeScript Railway IaC check and `git diff --check`: PASS;
+- Linux image build with x402 `2.22.0`: PASS;
+- mounted-volume witness: health `ok`, PID 1 UID `999`, SQLite owner `sne-sec:sne-sec`;
+- read-only Celo readiness witness: PASS.

@@ -57,6 +57,7 @@ The reference surface exposes:
 GET  /healthz
 POST /v1/reference/reviews
 GET  /v1/reviews/{review_id}
+GET  /v1/x402/reviews/{review_id}  (only when x402 is fully configured)
 POST /v1/review-diffs
 GET  /.well-known/agent.json
 GET  /.well-known/sne-sec-capabilities.json
@@ -64,6 +65,47 @@ GET  /.well-known/sne-sec-capabilities.json
 
 Every persisted Review is append-only at the database boundary. Rescanning creates another Review
 and `ReviewDiff` classifies resolution, regression, unchanged results, and coverage changes.
+
+## x402 review delivery on Celo
+
+The optional paid delivery route uses x402 v2 `exact` with Celo mainnet USDC. Its offer is explicit:
+`eip155:42220`, asset `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`, six decimals,
+and an integer atomic amount. Dollar shorthand and implicit assets are not admitted.
+
+The facilitator does not decide settlement truth. Before `/settle`, the service durably records a
+payment intent without retaining the signature or raw authorization. After a successful
+facilitator response, it records that response as a claim and independently queries Celo. The
+buffered Review response is released only after all of the following agree:
+
+```text
+x402 requirement + EIP-3009 authorization
+  -> durable payment intent
+  -> facilitator settlement claim
+  -> Celo chain ID 42220
+  -> successful direct transferWithAuthorization call to USDC
+  -> exact payer, payee, amount, validity window, and nonce identity
+  -> one unambiguous ERC-20 Transfer log
+  -> canonical receipt block with the configured latest-head confirmation count
+  -> append-only settlement admission
+  -> Review delivery
+```
+
+If the facilitator broadcasts successfully but the independent RPC is temporarily unavailable or
+disagrees, delivery fails closed while the durable claim preserves the ambiguous effect. Retrying
+the same authorization re-observes that transaction and, once admitted, resumes delivery without
+asking the facilitator to broadcast it again.
+
+`SNE_SEC_CELO_X402_ENABLED=true` fails startup unless the dedicated agent wallet is configured as
+`SNE_SEC_CELO_AGENT_WALLET` and the Celo facilitator credential is injected at runtime as
+`SNE_SEC_CELO_X402_API_KEY`. The credential is only attached to `/settle`; it is never written to
+the database or returned by the API. Optional controls are
+`SNE_SEC_CELO_X402_AMOUNT_ATOMIC`, `SNE_SEC_CELO_X402_MIN_CONFIRMATIONS`,
+`SNE_SEC_CELO_X402_FACILITATOR_URL`, and `SNE_SEC_CELO_RPC_URL`.
+
+The current verifier deliberately admits the direct EIP-3009 path only. Alternate transfer paths
+and ambiguous events fail closed until they receive their own versioned admission policy. The V1
+micropayment policy defaults to one canonical Celo confirmation; it is explicit and configurable,
+and it does not mislabel L2 inclusion as Ethereum L1 finality.
 
 ## Provision the dedicated Celo wallet
 
@@ -104,6 +146,7 @@ Wallet private material is never present in the service.
 ```powershell
 & .\scripts\verify.ps1
 python scripts\witness_reference_path.py https://celo.org
+python scripts\witness_celo_readiness.py
 npm ci
 npm run check
 docker build -t sne-sec-celo .

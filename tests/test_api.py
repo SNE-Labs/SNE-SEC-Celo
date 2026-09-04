@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from sne_sec_celo.agent import CELO_IDENTITY_REGISTRY, AgentSettings
 from sne_sec_celo.api import create_app
+from sne_sec_celo.errors import InvariantViolation
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
@@ -20,6 +21,14 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.get("/healthz")
             self.assertEqual(response.status_code, 200)
             self.assertFalse(response.json()["private_provider_required"])
+            self.assertIsNone(response.json()["x402_settlement_admission"])
+
+    async def test_x402_cannot_be_advertised_without_dedicated_wallet(self) -> None:
+        with self.assertRaisesRegex(InvariantViolation, "dedicated agent wallet"):
+            AgentSettings(
+                public_base_url="https://agent.example.org",
+                x402_enabled=True,
+            )
 
     async def test_private_target_is_rejected_before_transport(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
