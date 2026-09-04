@@ -229,3 +229,28 @@ The production boundary was witnessed on 2026-09-04 from commit
 No payment was signed or broadcast for this boundary witness. It proves the public projection,
 offer, route protection, and durable resource binding without presenting an unpaid request as a
 settlement.
+
+## Cyber Intelligence interface
+
+The first public product surface was admitted from commit
+`1c68d9edf2c38f167971760fa788d3c208eb9aca` on 2026-09-04:
+
+- GitHub Actions run `33924899115` passed the isolated web type/build gate, Python proof, typed
+  Railway IaC, Linux image build, mounted-volume ownership, privilege drop, and served-shell
+  witness;
+- Railway deployment `2a37bb98-a8c3-4ed7-84a1-1be7b350b05d` passed `/healthz` and exposed the
+  Cyber Intelligence interface from the same immutable container as the reference provider;
+- the root interface returned HTTP 200 with a closed same-origin Content Security Policy and the
+  ERC-8004 `web` service now resolves to that product surface instead of API documentation;
+- production Review `review_1991d457fa0b4d639d470ac98ac302eb` completed against
+  `https://celo.org` with score 89 and three aggregate Findings;
+- its public response contained exactly `review_id`, `score`, `status`, and `summary`; Evidence,
+  RuleEvaluations, finding narratives, remediation, and result digest were not projected;
+- the interface obtained its active offer from the public commerce policy: Celo Mainnet, Celo
+  USDC, `1000000` atomic units (`1 USDC`);
+- the exact full-Review resource returned HTTP 402 without payment authorization, proving the UI
+  does not bypass the controlled delivery boundary.
+
+No wallet was opened and no payment was signed or broadcast during this interface witness. The
+browser x402 client is loaded only after an explicit unlock action and uses an injected EVM wallet;
+private key material does not enter the application server.
