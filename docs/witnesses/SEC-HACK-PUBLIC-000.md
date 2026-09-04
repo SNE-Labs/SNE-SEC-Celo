@@ -130,3 +130,16 @@ Local gate results for this implementation on 2026-09-04:
 - Linux image build with x402 `2.22.0`: PASS;
 - mounted-volume witness: health `ok`, PID 1 UID `999`, SQLite owner `sne-sec:sne-sec`;
 - read-only Celo readiness witness: PASS.
+
+Remote gate results for commit `b6e80eb` on 2026-09-04:
+
+- GitHub Actions run `33900304415`: Python proof, typed Railway IaC, Linux image build, and
+  container witness PASS;
+- Railway deployment `8420394f-e22d-43ea-ae07-be5f2ad1829c` applied the five versioned,
+  non-secret Celo/x402 runtime defaults and passed `/healthz` with image digest
+  `sha256:4e0a1c595d7becd9f2eb9a87db0276bfcfcddb4970383cde9e8cc5e52fcadc48`;
+- the hosted service reported `x402_enabled=false` and no settlement-admission capability, while
+  `/v1/x402/reviews/{review_id}` remained absent with HTTP 404;
+- the pre-existing public Review remained retrievable with result digest
+  `sha256:ab13ab447559a501f93509009e5486ba144208bacbd945d2d736c7d72b54c16e` after the IaC-triggered
+  redeployment.
