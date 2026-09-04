@@ -17,7 +17,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+wallet-tools = [
+  "eth-account>=0.14,<1",
+]
 dev = [
+  "eth-account>=0.14,<1",
   "httpx>=0.28,<1",
   "mypy>=1.17,<2",
   "ruff>=0.12,<1",
@@ -25,6 +29,8 @@ dev = [
 
 [project.scripts]
 sne-sec-celo = "sne_sec_celo.cli:main"
+sne-sec-celo-provision-wallet = "sne_sec_celo.wallet_provisioning:main"
+sne-sec-celo-verify-wallet = "sne_sec_celo.wallet_provisioning:verify_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sne_sec_celo"]

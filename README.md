@@ -63,6 +63,25 @@ POST /v1/review-diffs
 Every persisted Review is append-only at the database boundary. Rescanning creates another Review
 and `ReviewDiff` classifies resolution, regression, unchanged results, and coverage changes.
 
+## Provision the dedicated Celo wallet
+
+The agent identity and x402 `payTo` wallet is a dedicated Celo mainnet address. Provision it on an
+operator-controlled machine; never put its password, private key, or encrypted keystore in this
+repository or in the API deployment.
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e ".[wallet-tools]"
+& .\.venv\Scripts\sne-sec-celo-provision-wallet.exe `
+    --output "$env:USERPROFILE\Documents\SNE-SEC-Celo-Wallet-Backup"
+
+& .\.venv\Scripts\sne-sec-celo-verify-wallet.exe `
+    --bundle "$env:USERPROFILE\Documents\SNE-SEC-Celo-Wallet-Backup"
+```
+
+Both commands prompt for the password without accepting it as an argument or environment variable.
+The bundle contains one encrypted Web3 keystore, a public manifest bound to `eip155:42220`, and
+backup instructions. Only the public address and public manifest are admissible for registration.
+
 ## Verify
 
 ```powershell

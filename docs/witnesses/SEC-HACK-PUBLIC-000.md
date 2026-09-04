@@ -44,11 +44,14 @@ target normalization
 
 Local gates on 2026-09-04:
 
-- 14 unit/API/domain tests: PASS;
+- 14 unit/API/domain tests on reference commit `4c52436`: PASS;
 - Ruff: PASS;
 - strict mypy over 15 source files: PASS;
 - `git diff --check`: PASS;
 - live reference witness against `https://celo.org`: PASS;
+- clean clone of public commit `4c52436cf1deb68acd9c0f282ad5a9cc6f7e92f6`: install, tests,
+  lint, strict typing, and live witness PASS with no private repository access;
+- GitHub Actions run `33845797772`: Python proof and Linux container build PASS;
 - witness facts: 6 Observations, 6 Evidence records, 5 RuleEvaluations, 3 Findings, score 89,
   persisted digest reproduced.
 

@@ -16,6 +16,7 @@ entries:
       - src/sne_security_review/evidence/
       - src/sne_security_review/rules/
       - src/sne_security_review/reviews/
+      - src/sne_security_review/payments/provisioning.py
     concepts:
       - completed Reviews are immutable and rescans create distinct Reviews
       - collector output has no severity
@@ -24,6 +25,8 @@ entries:
       - canonical objects reject floating-point values
       - target admission validates names, DNS answers, redirects, and connected peers
       - assessment, commerce, settlement, and entitlement state machines are orthogonal
+      - operational EVM keys are generated offline and immediately encrypted
+      - encrypted wallet bundles are created outside the source repository without overwrite
     destinations:
       - CONSTITUTION.md
       - docs/architecture/public-private-boundary.md
