@@ -9,6 +9,18 @@ permissions:
   contents: read
 
 jobs:
+  iac:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
   proof:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -31,3 +43,41 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -t sne-sec-celo:${{ github.sha }} .
+      - name: Prove mounted SQLite volume ownership and privilege drop
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="sne-sec-celo:${{ github.sha }}"
+          volume="sne-sec-celo-${{ github.run_id }}-${{ github.run_attempt }}"
+          container="sne-sec-celo-${{ github.run_id }}-${{ github.run_attempt }}"
+
+          cleanup() {
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            docker volume rm "$volume" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker volume create "$volume" >/dev/null
+          docker run --rm --entrypoint sh \
+            --mount "source=$volume,target=/data" \
+            "$image" -c 'touch /data/reviews.sqlite3 && chmod 0600 /data/reviews.sqlite3'
+
+          docker run --detach --name "$container" \
+            --publish 127.0.0.1::8000 \
+            --mount "source=$volume,target=/data" \
+            "$image" >/dev/null
+
+          port="$(docker port "$container" 8000/tcp | sed 's/.*://')"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "http://127.0.0.1:$port/healthz" >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs "$container"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test "$(docker exec "$container" awk '/^Uid:/{print $2}' /proc/1/status)" != "0"
+          test "$(docker exec "$container" stat -c '%U:%G' /data/reviews.sqlite3)" = "sne-sec:sne-sec"

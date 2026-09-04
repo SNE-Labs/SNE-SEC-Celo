@@ -1,0 +1,55 @@
+import {
+  defineRailway,
+  github,
+  preserve,
+  project,
+  service,
+  volume,
+} from "railway/iac";
+
+export const partial = "sne-sec-celo-agent";
+
+export default defineRailway(() => {
+  const data = volume("sne-sec-celo agent-volume", {
+    alerts: { usage: { "80": {}, "95": {}, "100": {} } },
+    allowOnlineResize: true,
+    region: "us-west2",
+    sizeMB: 5000,
+  });
+
+  const agent = service("SNE-SEC Celo Agent", {
+    source: github("SNE-Labs/SNE-SEC-Celo", {
+      branch: "main",
+      checkSuites: false,
+    }),
+    build: {
+      buildEnvironment: "V3",
+      builder: "DOCKERFILE",
+      dockerfilePath: "Dockerfile",
+    },
+    deploy: {
+      healthcheckPath: "/healthz",
+      healthcheckTimeout: 120,
+      ipv6EgressEnabled: false,
+      multiRegionConfig: { "us-west2": { numReplicas: 1 } },
+      restartPolicyMaxRetries: 10,
+      restartPolicyType: "ON_FAILURE",
+      runtime: "V2",
+      useLegacyStacker: false,
+    },
+    networking: {
+      privateNetworkEndpoint: "sne-sec-celo-agent",
+      serviceDomains: {
+        "sne-sec-celo-agent-production.up.railway.app": { port: 8000 },
+      },
+    },
+    variables: {
+      SNE_SEC_CELO_PUBLIC_BASE_URL: preserve(),
+    },
+    volumeMounts: {
+      "/data": data,
+    },
+  });
+
+  return project("SNE-SEC", { resources: [agent, data] });
+});

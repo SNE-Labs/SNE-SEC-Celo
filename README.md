@@ -92,15 +92,19 @@ The public reference agent is deployed from this repository at:
 https://sne-sec-celo-agent-production.up.railway.app/.well-known/agent.json
 ```
 
-The Railway service uses the repository Dockerfile, a persistent `/data` volume for append-only
-reference Reviews, and `/healthz` as its deployment gate. Wallet private material is never present
-in the service.
+The Railway service uses the repository Dockerfile, the checked-in `.railway/railway.ts`
+infrastructure definition, a persistent `/data` volume for append-only reference Reviews, and
+`/healthz` as its deployment gate. A minimal root entrypoint admits ownership of the mounted
+volume and immediately replaces itself with the application running as the unprivileged `sne-sec`
+user. Wallet private material is never present in the service.
 
 ## Verify
 
 ```powershell
 & .\scripts\verify.ps1
 python scripts\witness_reference_path.py https://celo.org
+npm ci
+npm run check
 docker build -t sne-sec-celo .
 ```
 
