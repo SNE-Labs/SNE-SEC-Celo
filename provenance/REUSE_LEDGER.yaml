@@ -79,3 +79,18 @@ entries:
       - AuthorizationUsed and ERC-20 Transfer event semantics
     destinations:
       - src/sne_sec_celo/celo_settlement.py
+  - source: SNE-Labs/SNE-Labs-Askbot
+    commit: 2568ffb56e739acac73efea3d31babb4993e8a80
+    disposition: semantic_reference_only
+    code_copied: false
+    source_artifacts:
+      - src/sne_askbot/provision.py
+      - docs/OPERATIONS.md
+    concepts:
+      - Windows-user-bound DPAPI vault for local operational signing material
+      - save-before-effect provisioning and durable ambiguous-effect state
+      - secret publication to Railway through standard input without command arguments
+      - safe summaries expose public identities but never private keys or API keys
+    destinations:
+      - src/sne_sec_celo/operational_provisioning.py
+      - docs/operations/provisioning.md

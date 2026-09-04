@@ -3,12 +3,14 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from httpx import ASGITransport, AsyncClient
 
 from sne_sec_celo.agent import CELO_IDENTITY_REGISTRY, AgentSettings
 from sne_sec_celo.api import create_app
 from sne_sec_celo.errors import InvariantViolation
+from sne_sec_celo.x402_runtime import X402Settings
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
@@ -29,6 +31,28 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 public_base_url="https://agent.example.org",
                 x402_enabled=True,
             )
+
+    async def test_x402_payment_destination_can_be_the_operator_treasury(self) -> None:
+        agent = AgentSettings(
+            public_base_url="https://agent.example.org",
+            wallet_address="0x1111111111111111111111111111111111111111",
+            x402_enabled=True,
+        )
+        with patch.dict(
+            "os.environ",
+            {
+                "SNE_SEC_CELO_X402_PAY_TO": (
+                    "0x34385Fc3B012Ae8980e17F6c3224a5aE0f946289"
+                )
+            },
+            clear=True,
+        ):
+            payment = X402Settings.from_environment(agent)
+        self.assertEqual(
+            payment.pay_to,
+            "0x34385fc3b012ae8980e17f6c3224a5ae0f946289",
+        )
+        self.assertNotEqual(payment.pay_to, agent.wallet_address)
 
     async def test_private_target_is_rejected_before_transport(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

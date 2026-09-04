@@ -59,12 +59,6 @@ def create_app(
     payment_settings = x402_settings or X402Settings.from_environment(settings)
     if payment_settings.enabled != settings.x402_enabled:
         raise InvariantViolation("agent and x402 enabled states must agree")
-    if (
-        payment_settings.enabled
-        and settings.wallet_address is not None
-        and payment_settings.pay_to != settings.wallet_address.lower()
-    ):
-        raise InvariantViolation("x402 payTo must equal the dedicated agent wallet")
     app = FastAPI(
         title="SNE-SEC Celo Agent",
         version="1.0.0",

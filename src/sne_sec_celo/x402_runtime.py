@@ -93,7 +93,7 @@ class X402Settings:
             raise InvariantViolation("x402 numeric configuration must contain integers") from exc
         return cls(
             enabled=agent.x402_enabled,
-            pay_to=agent.wallet_address,
+            pay_to=os.environ.get("SNE_SEC_CELO_X402_PAY_TO", agent.wallet_address),
             amount_atomic=amount,
             facilitator_url=os.environ.get(
                 "SNE_SEC_CELO_X402_FACILITATOR_URL", CELO_FACILITATOR_URL

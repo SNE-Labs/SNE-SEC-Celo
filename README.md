@@ -95,10 +95,12 @@ disagrees, delivery fails closed while the durable claim preserves the ambiguous
 the same authorization re-observes that transaction and, once admitted, resumes delivery without
 asking the facilitator to broadcast it again.
 
-`SNE_SEC_CELO_X402_ENABLED=true` fails startup unless the dedicated agent wallet is configured as
-`SNE_SEC_CELO_AGENT_WALLET` and the Celo facilitator credential is injected at runtime as
-`SNE_SEC_CELO_X402_API_KEY`. The credential is only attached to `/settle`; it is never written to
-the database or returned by the API. Optional controls are
+`SNE_SEC_CELO_X402_ENABLED=true` fails startup unless the dedicated identity wallet is configured
+as `SNE_SEC_CELO_AGENT_WALLET`, the receive-only destination is configured as
+`SNE_SEC_CELO_X402_PAY_TO`, and the Celo facilitator credential is injected at runtime as
+`SNE_SEC_CELO_X402_API_KEY`. The payment destination may be an operator treasury and does not
+grant the service signing authority. The credential is only attached to `/settle`; it is never
+written to the database or returned by the API. Optional controls are
 `SNE_SEC_CELO_X402_AMOUNT_ATOMIC`, `SNE_SEC_CELO_X402_MIN_CONFIRMATIONS`,
 `SNE_SEC_CELO_X402_FACILITATOR_URL`, and `SNE_SEC_CELO_RPC_URL`.
 
@@ -125,6 +127,20 @@ repository or in the API deployment.
 Both commands prompt for the password without accepting it as an argument or environment variable.
 The bundle contains one encrypted Web3 keystore, a public manifest bound to `eip155:42220`, and
 backup instructions. Only the public address and public manifest are admissible for registration.
+
+For hosted operation, the preferred Askbot-style flow creates a Windows-user-bound DPAPI vault,
+enrolls a facilitator credential with a gasless message, publishes the existing treasury as the
+x402 `payTo`, and enables Railway only after every prerequisite is present:
+
+```powershell
+& .\.venv\Scripts\sne-sec-celo-provision.exe `
+  --pay-to <CELO_TREASURY_ADDRESS> `
+  --railway `
+  --enable
+```
+
+See [operational provisioning](docs/operations/provisioning.md). ERC-8004 registration remains a
+separate on-chain effect.
 
 ## Hosted agent URI
 

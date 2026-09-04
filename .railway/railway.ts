@@ -43,12 +43,15 @@ export default defineRailway(() => {
     },
     variables: {
       PORT: "8000",
+      SNE_SEC_CELO_AGENT_WALLET: preserve(),
       SNE_SEC_CELO_PUBLIC_BASE_URL: preserve(),
       SNE_SEC_CELO_RPC_URL: "https://forno.celo.org",
       SNE_SEC_CELO_X402_AMOUNT_ATOMIC: "10000",
-      SNE_SEC_CELO_X402_ENABLED: "false",
+      SNE_SEC_CELO_X402_API_KEY: preserve(),
+      SNE_SEC_CELO_X402_ENABLED: preserve(),
       SNE_SEC_CELO_X402_FACILITATOR_URL: "https://api.x402.celo.org",
       SNE_SEC_CELO_X402_MIN_CONFIRMATIONS: "1",
+      SNE_SEC_CELO_X402_PAY_TO: preserve(),
     },
     volumeMounts: {
       "/data": data,
