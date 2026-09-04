@@ -204,3 +204,28 @@ The initial `10000` atomic-unit x402 offer above was a deployment smoke-test pri
 about sustainable product economics. The launch pricing change raises the public Security Passport
 delivery price to `1000000` atomic units (`1 USDC`). The asset, network, treasury destination,
 settlement admission policy, and immutable Review remain unchanged.
+
+## Commercial delivery boundary
+
+The production boundary was witnessed on 2026-09-04 from commit
+`623d9e0b3f933ff1cc7aedac8902013bd6a97c73`:
+
+- GitHub Actions run `33922117451` passed the Python proof, Railway IaC, Docker build, and
+  mounted-volume privilege-drop jobs;
+- Railway deployment `6d5ffcc1-dab2-4821-a156-18ff1a2dc24b` reached `SUCCESS` after `/healthz`;
+- `POST /v1/reference/reviews` created Review
+  `review_be63ac61c3ef4ee59391f2680f9844cb` and returned exactly `review_id`, `status`, `score`,
+  and `summary`;
+- public lookup of both the new Review and the fixed example returned that same limited projection;
+- only the parameter-free example route returned the complete configured Review
+  `review_ac8c7054897c4ec9ada5feae8dfcf8f3`;
+- the public ReviewDiff response contained aggregate summary fields and no entries or digest;
+- the complete Review and exact-pair ReviewDiff routes each returned `402` with Celo Mainnet,
+  Celo USDC `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`, `1000000` atomic units, and treasury
+  `0x34385fc3b012ae8980e17f6c3224a5ae0f946289`;
+- the integration witness also rejected reuse of a reconciled authorization against a different
+  Review resource while preserving recovery for the originally paid resource.
+
+No payment was signed or broadcast for this boundary witness. It proves the public projection,
+offer, route protection, and durable resource binding without presenting an unpaid request as a
+settlement.
